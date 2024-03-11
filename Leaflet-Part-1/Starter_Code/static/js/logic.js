@@ -7,6 +7,21 @@ d3.json(queryUrl).then(function (data) {
   createFeatures(data.features);
 });
 
+// Create a function to determine the circle size
+function markerSize(mag) {
+  return mag*5 
+};
+
+// Create a function to determine earthquake point color
+function markerColor(magDepth) {
+  if (magDepth > 90) return "#4F00AD";
+  else if (magDepth > 70) return "#7500FF";
+  else if (magDepth > 50) return "#932FFF";
+  else if (magDepth > 30) return "#D947D6";
+  else if (magDepth > 10) return "#FF87FC";
+  else return "#FFC1FE";
+}
+
 function createFeatures(earthquakeData) {
 
   // Define a function that we want to run once for each feature in the features array.
@@ -18,12 +33,23 @@ function createFeatures(earthquakeData) {
   // Create a GeoJSON layer that contains the features array on the earthquakeData object.
   // Run the onEachFeature function once for each piece of data in the array.
   let earthquakes = L.geoJSON(earthquakeData, {
-    onEachFeature: onEachFeature
+    onEachFeature: onEachFeature,
+    pointToLayer: function (feature, latlng) {
+      let geojsonMarkerOptions = {
+        radius: markerSize(feature.properties.mag),
+        fillColor: markerColor(feature.geometry.coordinates[2]),
+        color: "black",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      };
+      return L.circleMarker(latlng, geojsonMarkerOptions);
+    }
   });
 
   // Send our earthquakes layer to the createMap function/
   createMap(earthquakes);
-}
+};
 
 function createMap(earthquakes) {
 
@@ -49,12 +75,29 @@ function createMap(earthquakes) {
 
   // Create our map, giving it the streetmap and earthquakes layers to display on load.
   let myMap = L.map("map", {
-    center: [
-      37.09, -95.71
-    ],
+    center: [37.09, -95.71],
     zoom: 5,
     layers: [street, earthquakes]
   });
+
+  // Add legend to the map
+  let legend = L.control({position: "bottomright"});
+    legend.onAdd = function() {
+
+      let div = L.DomUtil.create('div', 'info legend'),
+        depth = [-10, 10, 30, 50, 70, 90];
+
+      div.innerHTML += "<h3 style='text-align: center'>Depth</h3>"
+      
+      for (let i = 0; i < depth.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + markerColor(depth[i] + 1) + '"></i> ' + depth[i] + (depth[i + 1] ? '&ndash;' + depth[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(myMap); 
 
   // Create a layer control.
   // Pass it our baseMaps and overlayMaps.
@@ -63,4 +106,4 @@ function createMap(earthquakes) {
     collapsed: false
   }).addTo(myMap);
 
-}
+};
